@@ -31,14 +31,14 @@
  # unzip /tmp/${component}.zip &>>log_file
  # Stat $?
 
--name: Setup frontend
- host: all
- become: true
- tasks:
-  - name: Install Nginx
-    ansible.builtin.dnf:
-     name: nginx
-     state: installed
+- name: Setup frontend
+  host: all
+  become: true
+  tasks:
+   -  name: Install Nginx
+      ansible.builtin.dnf:
+        name: nginx
+        state: installed
 
 
 
