@@ -32,7 +32,7 @@
  # Stat $?
 
 - name: Setup frontend
-  host: all
+  hosts: all
   become: true
   tasks:
    -  name: Install Nginx
