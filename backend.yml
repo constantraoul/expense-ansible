@@ -54,7 +54,7 @@
         state: installed
 
     - name: Load the Schema
-      community.mysql_db:
+      community.mysql.mysql_db:
         state: import
         name: all
         target: /app/schema/backend.sql
