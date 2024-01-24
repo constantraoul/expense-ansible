@@ -1,55 +1,68 @@
+- name: Backend Setup
+  hosts: all
+  become: yes
+  tasks:
+    - name: Disable Default Version of NodeJS
+      ansible.builtin.shell: dnf module disable nodejs -y
 
-MYSQL_PASSWORD=$1
-if [ -z "$MYSQL_PASSWORD" ]; then
-echo Input MYSQL_PASSWORD is missing
-exit 1
-fi
+    - name: Enable NodeJS18 Version
+      ansible.builtin.shell: dnf module enable nodejs:18 -y
 
-component=backend
+    - name: Install NodeJS
+      ansible.builtin.dnf:
+        name: nodejs
+        state: installed
 
-source common.sh
+    - name: Configure Backend Service
+      ansible.builtin.copy:
+        src: backend service
+        dest:  /etc/systemd/system/backend.service
 
-Head "Disable Default Version NodeJS"
-dnf module disable nodejs -y &>>log_file
-Stat $?
+    - name: Adding Application User
+      ansible.builtin.user:
+        name: expense
+
+    - name: Remove existing App content
+      ansible.builtin.file:
+        path: /app
+        state: absent
+
+    - name: Create Application Directory
+      ansible.builtin.file:
+        path: /app
+        state: directory
+
+    - name: Download and Extract Application Content
+      ansible.builtin.unarchive:
+        src: https://expense-artifacts.s3.amazonaws/backend.zip
+        dest: /app
+        remote_src: true
+
+    - name: Download Application Dependencies
+      community.general.npm:
+        path: /app
+
+    - name: Reloading SystemD and Start Backend Service
+      ansible.builtin.systemD_service:
+        name: backend
+        state: restarted
+        enabled: yes
+
+    - name: Install MySQL Client
+      ansible.builtin.dnf:
+        src: mysql
+        state: installed
+
+    - name: Load the Schema
+      community.mysql_db:
+        state: import
+        name: all
+        target: /app/schema/backend.sql
+        login_user: root
+        login_password: ExpenseApp@1
+        login_host: mysql-dev.raoulconstant@com
 
 
-Head "Enable NodeJS18 Version"
-dnf module enable nodejs:18 -y &>>log_file
-Stat $?
 
-Head "Install NodeJS"
-dnf install nodejs -y &>>log_file
-Stat $?
 
-Head "Configure Backend Service"
-cp backend.service /etc/systemd/system/backend.service &>>log_file
-Stat $?
-
-Head "Adding Application User"
-id expense &>>log_file
-if [ "$?" -ne 0 ]; then
-useradd expense &>>log_file
-fi
-Stat $?
-
-App_Prereq "/app"
-
-Head "Downloading Application Dependencies"
-npm install &>>log_file
-Stat $?
-
-Head "Reloading SystemD and Start Backend Service"
-systemctl daemon-reload &>>log_file
-systemctl enable backend &>>log_file
-systemctl restart backend &>>log_file
-Stat $?
-
-Head "Install MySQL Client"
-dnf install mysql -y &>>log_file
-Stat $?
-
-Head "Load Schema"
-mysql -h mysql-dev.raoulconstant.com -uroot -p${MYSQL_PASSWORD} < /app/schema/backend.sql &>>log_file
-Stat $?
 
